@@ -5,7 +5,7 @@ export default async function publishCommand(
 ): Promise<void> {
   const root = args._.shift();
   const result = await Deno.emit(root, {
-    bundle: "esm",
+    bundle: "module",
     check: false,
   });
 

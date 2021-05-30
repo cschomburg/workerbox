@@ -1,4 +1,4 @@
-import { Application, Router, RouterContext } from "./deps.ts";
+import { Application, Router, RouterContext } from "../deps.ts";
 import { Script } from "./model.ts";
 import Store from "./datastore.ts";
 
@@ -94,6 +94,8 @@ export async function runServer(): Promise<void> {
 
   app.use(router.routes());
   app.use(router.allowedMethods());
+
+  console.log('[server] running at http://0.0.0.0:8000');
 
   await app.listen({ port: 8000 });
 }

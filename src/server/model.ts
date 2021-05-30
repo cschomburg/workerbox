@@ -1,4 +1,4 @@
-import { uuid } from "./deps.ts";
+import { uuid } from "../deps.ts";
 
 export class Script {
   name: string;

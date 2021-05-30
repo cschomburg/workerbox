@@ -1,11 +1,13 @@
-import { parseArgs } from "./deps.ts";
-import publishCommand from "./publish.ts";
+import { parseArgs } from "./src/deps.ts";
+import publishCommand from "./src/client/publish.ts";
+import { runServer } from "./src/server/server.ts"
 
-const usage = `deployer
-Interact with the overseer worker API.
+const usage = `workerbox
+Run a workerbox or interact with the workerbox API.
 
 SUBCOMMANDS
-    publish     Publish your worker to overseer.
+    serve       Run a workerbox server
+    publish     Publish your worker to workerbox.
 `;
 
 export default async function mainCommand(): Promise<void> {
@@ -17,9 +19,14 @@ export default async function mainCommand(): Promise<void> {
 
   const cmd = args._.shift();
   switch (cmd) {
+    case "serve":
+        await runServer();
+        break;
+
     case "publish":
       await publishCommand(args);
       break;
+
     default:
       if (args.help) {
         console.log(usage);
@@ -29,3 +36,5 @@ export default async function mainCommand(): Promise<void> {
       Deno.exit(1);
   }
 }
+
+await mainCommand();

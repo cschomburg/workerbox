@@ -1,5 +1,5 @@
 import { Script } from "./model.ts";
-import { EventEmitter } from "./deps.ts";
+import { EventEmitter } from "../deps.ts";
 
 export interface ScriptStatusChangedEvent {
   script: Script;
