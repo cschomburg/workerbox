@@ -1,12 +1,13 @@
 import EventBus from "./eventbus.ts";
 import { Context } from "../deps.ts";
+import { Script } from "./model.ts";
 
 export class Router {
   #domain = "workers.local";
-  #routes: Map<string, string>;
+  #routes: Map<string, Script>;
 
   constructor() {
-    this.#routes = new Map<string, string>();
+    this.#routes = new Map<string, Script>();
   }
 
   async handleEvents(): Promise<void> {
@@ -14,8 +15,11 @@ export class Router {
       if (event.name === "scriptStatusChanged") {
         const { script } = event.value[0];
         if (script.status === "running") {
-          this.put(script.name, script.url);
-          this.put(script.nameId(), script.url);
+          this.put(script.name, script);
+          this.put(script.nameId(), script);
+        }
+        if (script.status === "terminating" || script.status === "terminated") {
+          this.delete(script);
         }
       }
     }
@@ -25,9 +29,22 @@ export class Router {
     return this.getTarget(route) !== "";
   }
 
-  put(route: string, target: string): void {
-    console.log(`[router] routing ${route} to ${target}`);
-    this.#routes.set(route, target);
+  handles(route: string): boolean {
+    return route.endsWith("." + this.#domain);
+  }
+
+  put(route: string, script: Script): void {
+    console.log(`[router] routing ${route} to ${script.url}`);
+    this.#routes.set(route, script);
+  }
+
+  delete(script: Script): void {
+    for (const [route, routeScript] of this.#routes) {
+      if (routeScript.id === script.id) {
+        this.#routes.delete(route);
+        console.log(`[router] delete route ${route}`);
+      }
+    }
   }
 
   getTarget(route: string): string {
@@ -41,12 +58,19 @@ export class Router {
       return "";
     }
 
-    return target;
+    return target.url;
   }
 
   async proxy(ctx: Context): Promise<void> {
     const url = new URL(ctx.request.url.toString());
-    const target = new URL(this.getTarget(url.host));
+    const targetHost = this.getTarget(url.host);
+    if (targetHost == "") {
+      ctx.response.status = 404;
+      ctx.response.body = "not found";
+      return;
+    }
+
+    const target = new URL(targetHost);
     url.protocol = target.protocol;
     url.hostname = target.hostname;
     url.port = target.port;

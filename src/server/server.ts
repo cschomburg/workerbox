@@ -122,7 +122,7 @@ export async function runServer(): Promise<void> {
 
   app.use(async (ctx, next) => {
     const host = ctx.request.url.host;
-    if (!Store.getRouter().has(host)) {
+    if (!Store.getRouter().handles(host)) {
       await next();
       return;
     }

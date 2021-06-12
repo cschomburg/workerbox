@@ -46,8 +46,14 @@ export class Runner {
     if (!worker) {
       throw new Error(`worker for script ${script.nameId()} not found`);
     }
+    script.status = "terminating";
+    EventBus.emit("scriptStatusChanged", { script });
+
     worker.terminate();
     this.#workers.delete(script.id);
+
+    script.status = "terminated";
+    EventBus.emit("scriptStatusChanged", { script });
 
     console.log(`[runner] stopped worker for ${script.nameId()}`);
   }
