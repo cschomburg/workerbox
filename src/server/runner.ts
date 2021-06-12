@@ -9,6 +9,8 @@ interface ReadyMessage {
 type WorkerMessage = ReadyMessage;
 
 export class Runner {
+  #workers = new Map<string, Worker>();
+
   startScript(script: Script): void {
     const url = new URL("../runtime/worker.ts", import.meta.url);
     const worker = new Worker(url.href, {
@@ -17,12 +19,13 @@ export class Runner {
         namespace: true,
       },
     });
+    this.#workers.set(script.id, worker);
 
     worker.onerror = (err) => {
       console.log(`[runner] worker ${script.name} error:`, err);
     };
 
-    console.log(`[runner] started worker for ${script.name}-${script.id}`);
+    console.log(`[runner] started worker for ${script.nameId()}`);
 
     worker.postMessage({
       action: "runScript",
@@ -38,7 +41,15 @@ export class Runner {
     });
   }
 
-  stopScript(script: Script): void {
+  async stopScript(script: Script): Promise<void> {
+    const worker = this.#workers.get(script.id);
+    if (!worker) {
+      throw new Error(`worker for script ${script.nameId()} not found`);
+    }
+    worker.terminate();
+    this.#workers.delete(script.id);
+
+    console.log(`[runner] stopped worker for ${script.nameId()}`);
   }
 
   async handleWorkerMessage(

@@ -12,5 +12,5 @@ export default async function publishCommand(
   const scriptFile = result.files["deno:///bundle.js"];
 
   const client = new Client();
-  await client.putWorkerScript("hello-world", scriptFile);
+  await client.putScript("hello-world", scriptFile);
 }
