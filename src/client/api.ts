@@ -1,5 +1,14 @@
+import getConfig from "../config.ts";
+
 export default class Client {
-  #rootUrl = "http://localhost:8000/v1";
+  #rootUrl: string;
+
+  constructor(url = "") {
+    if (url === "") {
+      url = getConfig().url;
+    }
+    this.#rootUrl = url + "/v1";
+  }
 
   async putScript(name: string, content: string): Promise<void> {
     const body = new FormData();

@@ -7,6 +7,7 @@ import {
 import { Script, Secret } from "./model.ts";
 import Store from "./datastore.ts";
 import { Router } from "./router.ts";
+import getConfig from "../config.ts";
 
 function respondSuccess(context: RouterContext, result: any): void {
   context.response.body = {
@@ -174,7 +175,8 @@ export async function runServer(router: Router): Promise<void> {
   app.use(oakRouter.routes());
   app.use(oakRouter.allowedMethods());
 
-  console.log("[api] running at http://0.0.0.0:8000");
+  const { addr } = getConfig();
+  console.log(`[api] running at http://${addr}`);
 
-  await app.listen({ port: 8000 });
+  await app.listen(addr);
 }
