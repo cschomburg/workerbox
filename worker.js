@@ -3,6 +3,7 @@ console.log("hi from worker");
 addEventListener("fetch", (event) => {
   const data = {
     hello: "world",
+    secret: MY_TOKEN,
   };
 
   const json = JSON.stringify(data, null, 2);

@@ -1,18 +1,3 @@
-interface Script {
-  name: string;
-  id: string;
-  content: string;
-}
-
-interface ScriptCommand {
-  action: "runScript";
-  script: Script;
-}
-
-type Command = ScriptCommand;
-
-type Responder = (r: Response | Promise<Response>) => Promise<void>;
-
 class FetchEvent extends Event {
   #request;
   #respondWith;
@@ -22,20 +7,20 @@ class FetchEvent extends Event {
     return this.#request;
   }
 
-  constructor(request: Request, respondWith: Responder) {
+  constructor(request, respondWith) {
     super("fetch");
     this.#request = request;
     this.#respondWith = respondWith;
     this.#responded = false;
   }
 
-  respondWith(response: Response) {
+  respondWith(response) {
     if (this.#responded === true) {
       throw new TypeError("Already responded to this FetchEvent.");
     } else {
       this.#responded = true;
     }
-    this.#respondWith(response).catch((err: Error) => console.warn(err));
+    this.#respondWith(response).catch((err) => console.warn(err));
   }
 
   [Symbol.toStringTag]() {
@@ -43,23 +28,23 @@ class FetchEvent extends Event {
   }
 }
 
-let server: Deno.Listener;
+let server;
 
-async function handleConn(conn: Deno.Conn) {
+async function handleConn(conn) {
   const http = Deno.serveHttp(conn);
   for await (const { request, respondWith } of http) {
     self.dispatchEvent(new FetchEvent(request, respondWith));
   }
 }
 
-async function startListen(): Promise<void> {
+async function startListen() {
   server = Deno.listen({
     hostname: "127.0.0.1",
     port: 0,
     transport: "tcp",
   });
 
-  const addr = server.addr as Deno.NetAddr;
+  const addr = server.addr;
   const baseUrl = `http://${addr.hostname}:${addr.port}`;
 
   self.postMessage({
@@ -74,7 +59,7 @@ async function startListen(): Promise<void> {
   }
 }
 
-async function runScript(script: Script): Promise<void> {
+async function runScript(script) {
   console.log("[worker] running script", script.name);
   const blob = new Blob([script.content]);
   const url = URL.createObjectURL(blob);
@@ -83,9 +68,19 @@ async function runScript(script: Script): Promise<void> {
   await startListen();
 }
 
-onmessage = function (e: MessageEvent) {
-  const command = e.data as Command;
+async function updateSecrets(secrets) {
+  secrets.forEach((secret) => {
+    console.log("[worker] update secret", secret.name);
+    globalThis[secret.name] = secret.value;
+  });
+}
+
+onmessage = function (e) {
+  const command = e.data;
   if (command.action === "runScript") {
     runScript(command.script);
+  }
+  if (command.action === "updateSecrets") {
+    updateSecrets(command.secrets);
   }
 };

@@ -3,6 +3,7 @@ import serveCommand from "./src/server/serve.ts";
 import publishCommand from "./src/client/publish.ts";
 import scriptsCommand from "./src/client/scripts.ts";
 import deleteCommand from "./src/client/delete.ts";
+import secretCommand from "./src/client/secret.ts";
 
 const usage = `workerbox
 Run a workerbox or interact with the workerbox API.
@@ -10,8 +11,9 @@ Run a workerbox or interact with the workerbox API.
 SUBCOMMANDS
     serve       Run a workerbox server
     publish     Publish your worker to workerbox.
-    scrips      List all scripts on server
+    scripts     List all scripts on server
     delete      Deletes a script by name or ID
+    secret      Interact with secret variables
 `;
 
 export default async function mainCommand(): Promise<void> {
@@ -37,6 +39,10 @@ export default async function mainCommand(): Promise<void> {
 
     case "delete":
       await deleteCommand(args);
+      break;
+
+    case "secret":
+      await secretCommand(args);
       break;
 
     default:

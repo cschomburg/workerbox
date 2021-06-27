@@ -23,4 +23,27 @@ export default class Client {
     const resp = await fetch(url, { method: "DELETE" });
     console.log(await resp.json());
   }
+
+  async putSecret(
+    scriptName: string,
+    secretName: string,
+    value: string,
+  ): Promise<void> {
+    const data = {
+      secrets: {
+        [secretName]: value,
+      },
+    };
+
+    const url = `${this.#rootUrl}/secrets/${scriptName}`;
+    const resp = await fetch(url, {
+      method: "PUT",
+      body: JSON.stringify(data),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    console.log(await resp.json());
+  }
 }

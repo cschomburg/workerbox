@@ -2,6 +2,7 @@ import Store from "./datastore.ts";
 import { Context } from "../deps.ts";
 import { Script } from "./model.ts";
 import getConfig from "../config.ts";
+import { ScriptPayload } from "./eventbus.ts";
 
 export class Router {
   #domain = getConfig().domain;
@@ -17,7 +18,7 @@ export class Router {
     for await (const event of Store.eventBus) {
       try {
         if (event.name === "scriptStatusChanged") {
-          const { script } = event.value[0];
+          const { script } = event.value[0] as ScriptPayload;
 
           if (script.status === "running") {
             this.put(script.name, script);

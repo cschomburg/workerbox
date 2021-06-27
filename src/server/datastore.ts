@@ -1,5 +1,5 @@
 import { Database } from "./db.ts";
-import { Script } from "./model.ts";
+import { KeyValue, Script, Secret } from "./model.ts";
 import { EventBus } from "./eventbus.ts";
 import getConfig from "../config.ts";
 
@@ -65,6 +65,7 @@ export class Store {
 
   async updateScriptStatus(script: Script, status: string): Promise<void> {
     script.status = status;
+    script.updatedAt = new Date();
     this.#db.updateScriptStatus(script);
     this.#eventBus.emit("scriptStatusChanged", { script });
 
@@ -73,6 +74,23 @@ export class Store {
       script.nameId(),
       script.status,
     );
+  }
+
+  async putSecrets(script: string, secrets: Secret[]): Promise<void> {
+    secrets.forEach((secret) => this.#db.putSecret(secret));
+    this.#eventBus.emit("scriptSecretsChanged", { script });
+  }
+
+  async getSecrets(script: string): Promise<Secret[]> {
+    return this.#db.getSecrets(script);
+  }
+
+  async putKeyValue(kv: KeyValue): Promise<void> {
+    this.#db.putKeyValue(kv);
+  }
+
+  async getKeyValue(kv: KeyValue): Promise<KeyValue | undefined> {
+    return this.#db.getKeyValue(kv);
   }
 }
 

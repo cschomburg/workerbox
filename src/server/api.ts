@@ -4,7 +4,7 @@ import {
   Router as OakRouter,
   RouterContext,
 } from "../deps.ts";
-import { Script } from "./model.ts";
+import { Script, Secret } from "./model.ts";
 import Store from "./datastore.ts";
 import { Router } from "./router.ts";
 
@@ -35,6 +35,16 @@ const plainScriptTypes = [
   "application/x-typescript",
 ];
 
+function scriptToJson(script: Script): Record<string, any> {
+  return {
+    name: script.name,
+    id: script.id,
+    nameId: script.nameId(),
+    status: script.status,
+    updatedAt: script.updatedAt.toISOString(),
+  };
+}
+
 async function handlePutScript(context: RouterContext): Promise<void> {
   const request = context.request;
   const type = request.headers.get("content-type") || "";
@@ -62,14 +72,11 @@ async function handlePutScript(context: RouterContext): Promise<void> {
 
   await Store.putScript(script);
 
-  respondSuccess(context, { script });
+  respondSuccess(context, { script: scriptToJson(script) });
 }
 
 async function handleGetScripts(context: RouterContext): Promise<void> {
-  const scripts = Store.getScripts();
-  for (const script of scripts) {
-    script.content = undefined;
-  }
+  const scripts = Store.getScripts().map(scriptToJson);
 
   return respondSuccess(context, { scripts });
 }
@@ -94,6 +101,33 @@ async function handleDeleteScript(context: RouterContext): Promise<void> {
   return respondSuccess(context, {});
 }
 
+async function handlePutSecret(context: RouterContext): Promise<void> {
+  const scriptName = context.params.script_name;
+  if (!scriptName) {
+    respondErrors(context, [
+      { message: "No script name or ID given" },
+    ]);
+    return;
+  }
+
+  const body = await context.request.body({ type: "json" }).value;
+
+  const secrets = [];
+  const secretPairs = body.secrets as Record<string, string>;
+  for (const [name, value] of Object.entries(secretPairs)) {
+    const secret = new Secret(scriptName, name);
+    secret.value = value;
+    secrets.push(secret);
+  }
+  Store.putSecrets(scriptName, secrets);
+
+  return respondSuccess(context, {
+    secrets: secrets.map((s) => {
+      return { script: s.script, name: s.name };
+    }),
+  });
+}
+
 export async function runServer(router: Router): Promise<void> {
   const oakRouter = new OakRouter();
   oakRouter
@@ -102,7 +136,8 @@ export async function runServer(router: Router): Promise<void> {
     })
     .get("/v1/scripts", handleGetScripts)
     .put("/v1/scripts/:script_name", handlePutScript)
-    .delete("/v1/scripts/:script_name", handleDeleteScript);
+    .delete("/v1/scripts/:script_name", handleDeleteScript)
+    .put("/v1/secrets/:script_name", handlePutSecret);
 
   const app = new Application();
 
