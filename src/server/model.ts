@@ -3,7 +3,7 @@ import { uuid } from "../deps.ts";
 export class Script {
   name: string;
   id: string;
-  content = "";
+  content?: Uint8Array;
 
   status = "pending";
   url = "";

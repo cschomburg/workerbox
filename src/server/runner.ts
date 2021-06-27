@@ -1,5 +1,5 @@
 import { Script } from "./model.ts";
-import EventBus, { Events } from "./eventbus.ts";
+import Store from "./datastore.ts";
 
 interface ReadyMessage {
   action: "ready";
@@ -11,7 +11,27 @@ type WorkerMessage = ReadyMessage;
 export class Runner {
   #workers = new Map<string, Worker>();
 
-  startScript(script: Script): void {
+  async handleEvents(): Promise<void> {
+    for await (const event of Store.eventBus) {
+      try {
+        if (event.name === "scriptStatusChanged") {
+          const { script } = event.value[0];
+
+          if (script.status === "pending") {
+            await this.startScript(script);
+          }
+
+          if (script.status === "stopping") {
+            await this.stopScript(script);
+          }
+        }
+      } catch (e) {
+        console.error("[runner]", e);
+      }
+    }
+  }
+
+  async startScript(script: Script): Promise<void> {
     const url = new URL("../runtime/worker.ts", import.meta.url);
     const worker = new Worker(url.href, {
       type: "module",
@@ -46,14 +66,10 @@ export class Runner {
     if (!worker) {
       throw new Error(`worker for script ${script.nameId()} not found`);
     }
-    script.status = "terminating";
-    EventBus.emit("scriptStatusChanged", { script });
 
     worker.terminate();
     this.#workers.delete(script.id);
-
-    script.status = "terminated";
-    EventBus.emit("scriptStatusChanged", { script });
+    Store.updateScriptStatus(script, "stopped");
 
     console.log(`[runner] stopped worker for ${script.nameId()}`);
   }
@@ -66,10 +82,9 @@ export class Runner {
     const msg = e.data as WorkerMessage;
     if (msg.action === "ready") {
       console.log("[runner] worker signaled ready");
-      script.status = "running";
-      script.url = msg.address;
+      script.url = msg.address; // TODO: fixme
 
-      EventBus.emit("scriptStatusChanged", { script });
+      Store.updateScriptStatus(script, "running");
     }
   }
 }

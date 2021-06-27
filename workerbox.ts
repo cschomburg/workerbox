@@ -1,8 +1,8 @@
 import { parseArgs } from "./src/deps.ts";
+import serveCommand from "./src/server/serve.ts";
 import publishCommand from "./src/client/publish.ts";
 import scriptsCommand from "./src/client/scripts.ts";
 import deleteCommand from "./src/client/delete.ts";
-import { runServer } from "./src/server/server.ts";
 
 const usage = `workerbox
 Run a workerbox or interact with the workerbox API.
@@ -24,7 +24,7 @@ export default async function mainCommand(): Promise<void> {
   const cmd = args._.shift();
   switch (cmd) {
     case "serve":
-      await runServer();
+      await serveCommand(args);
       break;
 
     case "publish":

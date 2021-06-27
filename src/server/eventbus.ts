@@ -9,5 +9,4 @@ export type Events = {
   scriptStatusChanged: [ScriptStatusChangedEvent];
 };
 
-class EventBus extends EventEmitter<Events> {}
-export default new EventBus();
+export class EventBus extends EventEmitter<Events> {}

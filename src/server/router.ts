@@ -1,9 +1,10 @@
-import EventBus from "./eventbus.ts";
+import Store from "./datastore.ts";
 import { Context } from "../deps.ts";
 import { Script } from "./model.ts";
+import getConfig from "../config.ts";
 
 export class Router {
-  #domain = "workers.local";
+  #domain = getConfig().domain;
   #routes: Map<string, Script>;
 
   constructor() {
@@ -11,16 +12,24 @@ export class Router {
   }
 
   async handleEvents(): Promise<void> {
-    for await (const event of EventBus) {
-      if (event.name === "scriptStatusChanged") {
-        const { script } = event.value[0];
-        if (script.status === "running") {
-          this.put(script.name, script);
-          this.put(script.nameId(), script);
+    console.log("[router] running on domain", "*." + this.#domain);
+
+    for await (const event of Store.eventBus) {
+      try {
+        if (event.name === "scriptStatusChanged") {
+          const { script } = event.value[0];
+
+          if (script.status === "running") {
+            this.put(script.name, script);
+            this.put(script.nameId(), script);
+          }
+
+          if (script.status === "stopping" || script.status === "stopped") {
+            this.delete(script);
+          }
         }
-        if (script.status === "terminating" || script.status === "terminated") {
-          this.delete(script);
-        }
+      } catch (e) {
+        console.error("[router]", e);
       }
     }
   }

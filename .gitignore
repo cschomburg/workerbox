@@ -1,2 +1,4 @@
 .envrc
 tsconfig.json
+workerbox.db
+test.sh

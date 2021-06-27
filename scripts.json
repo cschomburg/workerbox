@@ -1,0 +1,19 @@
+{
+  "$schema": "https://deno.land/x/denon@2.4.7/schema.json",
+  "unstable": true,
+  "allow": {
+    "read": ".",
+    "write": ".",
+    "net": true,
+    "env": true
+  },
+  "scripts": {
+    "serve": {
+      "cmd": "deno run workerbox.ts serve"
+    },
+    "run": {
+      "cmd": "deno run workerbox.ts",
+      "watch": false
+    }
+  }
+}

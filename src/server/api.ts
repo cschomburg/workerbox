@@ -1,6 +1,12 @@
-import { Application, Router, RouterContext } from "../deps.ts";
+import {
+  Application,
+  readAll,
+  Router as OakRouter,
+  RouterContext,
+} from "../deps.ts";
 import { Script } from "./model.ts";
 import Store from "./datastore.ts";
+import { Router } from "./router.ts";
 
 function respondSuccess(context: RouterContext, result: any): void {
   context.response.body = {
@@ -36,18 +42,18 @@ async function handlePutScript(context: RouterContext): Promise<void> {
   const script = new Script(context.params.script_name || "");
 
   if (plainScriptTypes.includes(type)) {
-    script.content = await request.body({ type: "text" }).value;
+    script.content = await readAll(request.body({ type: "reader" }).value);
   } else if (type.startsWith("multipart/form-data")) {
     const body = context.request.body({ type: "form-data" });
     const data = await body.value.read({ maxSize: 1 * 1024 * 1024 });
     for (const file of data.files || []) {
       if (plainScriptTypes.includes(file.contentType)) {
-        script.content = new TextDecoder().decode(file.content);
+        script.content = file.content;
       }
     }
   }
 
-  if (script.name === "" || script.content === "") {
+  if (script.name === "" || script.content == undefined) {
     respondErrors(context, [
       { message: "No script found" },
     ]);
@@ -62,7 +68,7 @@ async function handlePutScript(context: RouterContext): Promise<void> {
 async function handleGetScripts(context: RouterContext): Promise<void> {
   const scripts = Store.getScripts();
   for (const script of scripts) {
-    script.content = "";
+    script.content = undefined;
   }
 
   return respondSuccess(context, { scripts });
@@ -88,9 +94,9 @@ async function handleDeleteScript(context: RouterContext): Promise<void> {
   return respondSuccess(context, {});
 }
 
-export async function runServer(): Promise<void> {
-  const router = new Router();
-  router
+export async function runServer(router: Router): Promise<void> {
+  const oakRouter = new OakRouter();
+  oakRouter
     .get("/", (context) => {
       context.response.body = "Hello world!";
     })
@@ -122,18 +128,18 @@ export async function runServer(): Promise<void> {
 
   app.use(async (ctx, next) => {
     const host = ctx.request.url.host;
-    if (!Store.getRouter().handles(host)) {
+    if (!router.handles(host)) {
       await next();
       return;
     }
 
-    await Store.getRouter().proxy(ctx);
+    await router.proxy(ctx);
   });
 
-  app.use(router.routes());
-  app.use(router.allowedMethods());
+  app.use(oakRouter.routes());
+  app.use(oakRouter.allowedMethods());
 
-  console.log("[server] running at http://0.0.0.0:8000");
+  console.log("[api] running at http://0.0.0.0:8000");
 
   await app.listen({ port: 8000 });
 }

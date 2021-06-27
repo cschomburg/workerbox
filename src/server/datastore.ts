@@ -1,6 +1,7 @@
+import { Database } from "./db.ts";
 import { Script } from "./model.ts";
-import { Runner } from "./runner.ts";
-import { Router } from "./router.ts";
+import { EventBus } from "./eventbus.ts";
+import getConfig from "../config.ts";
 
 function scriptMatchesSelector(script: Script, selector: string): boolean {
   return script.id === selector ||
@@ -9,45 +10,69 @@ function scriptMatchesSelector(script: Script, selector: string): boolean {
 }
 
 export class Store {
-  #runner: Runner;
-  #router: Router;
-  #scripts: Map<string, Script>;
+  #db: Database;
+  #eventBus: EventBus;
 
   constructor() {
-    this.#runner = new Runner();
-    this.#router = new Router();
-    this.#scripts = new Map<string, Script>();
+    this.#db = new Database(getConfig().db);
+    this.#eventBus = new EventBus();
+  }
 
-    this.#router.handleEvents();
+  get eventBus(): EventBus {
+    return this.#eventBus;
   }
 
   getScripts(): Script[] {
-    return [...this.#scripts.values()];
+    return this.#db.getScripts();
+  }
+
+  async startup(): Promise<void> {
+    const scripts = this.getScripts();
+
+    // Cleanup old invalid states
+    for (const script of scripts) {
+      if (["pending", "starting", "running"].includes(script.status)) {
+        this.updateScriptStatus(script, "pending");
+      }
+
+      if (script.status === "stopping") {
+        this.updateScriptStatus(script, "stopped");
+      }
+    }
   }
 
   async putScript(script: Script): Promise<void> {
-    this.#scripts.set(script.id, script);
-    this.#runner.startScript(script);
+    this.#db.putScript(script);
+    this.updateScriptStatus(script, "pending");
   }
 
   async deleteScript(scriptName: string): Promise<boolean> {
-    const scripts = [...this.#scripts.values()]
+    const scripts = this.getScripts()
       .filter((script) => scriptMatchesSelector(script, scriptName));
 
     if (scripts.length === 0) {
       return false;
     }
 
-    await Promise.all(scripts.map((script) => this.#runner.stopScript(script)));
     for (const script of scripts) {
-      this.#scripts.delete(script.id);
+      if (script.status === "running") {
+        this.updateScriptStatus(script, "stopping");
+      }
     }
 
     return true;
   }
 
-  getRouter(): Router {
-    return this.#router;
+  async updateScriptStatus(script: Script, status: string): Promise<void> {
+    script.status = status;
+    this.#db.updateScriptStatus(script);
+    this.#eventBus.emit("scriptStatusChanged", { script });
+
+    console.log(
+      "[store] script status changed:",
+      script.nameId(),
+      script.status,
+    );
   }
 }
 
