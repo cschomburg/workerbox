@@ -3,13 +3,16 @@ import { Context } from "../deps.ts";
 import { Script } from "./model.ts";
 import getConfig from "../config.ts";
 import { ScriptPayload } from "./eventbus.ts";
+import { FetchUpstream } from "./interfaces.ts";
 
 export class Router {
   #domain = getConfig().domain;
   #routes: Map<string, Script>;
+  #upstream: FetchUpstream;
 
-  constructor() {
+  constructor(upstream: FetchUpstream) {
     this.#routes = new Map<string, Script>();
+    this.#upstream = upstream;
   }
 
   async handleEvents(): Promise<void> {
@@ -36,7 +39,7 @@ export class Router {
   }
 
   has(route: string): boolean {
-    return this.getTarget(route) !== "";
+    return this.getTarget(route) != undefined;
   }
 
   handles(route: string): boolean {
@@ -44,7 +47,7 @@ export class Router {
   }
 
   put(route: string, script: Script): void {
-    console.log(`[router] routing ${route} to ${script.url}`);
+    console.log(`[router] routing ${route} to ${script.nameId()}`);
     this.#routes.set(route, script);
   }
 
@@ -57,33 +60,23 @@ export class Router {
     }
   }
 
-  getTarget(route: string): string {
+  getTarget(route: string): Script | undefined {
     route = this.trimDomain(route);
     if (route === "") {
-      return "";
+      return undefined;
     }
 
-    const target = this.#routes.get(route);
-    if (!target) {
-      return "";
-    }
-
-    return target.url;
+    return this.#routes.get(route);
   }
 
   async proxy(ctx: Context): Promise<void> {
-    const url = new URL(ctx.request.url.toString());
-    const targetHost = this.getTarget(url.host);
-    if (targetHost == "") {
+    const url = ctx.request.url;
+    const script = this.getTarget(url.host);
+    if (script == undefined) {
       ctx.response.status = 404;
       ctx.response.body = "not found";
       return;
     }
-
-    const target = new URL(targetHost);
-    url.protocol = target.protocol;
-    url.hostname = target.hostname;
-    url.port = target.port;
 
     const request = new Request(url.toString(), {
       method: ctx.request.method,
@@ -93,7 +86,15 @@ export class Router {
         : undefined,
     });
 
-    const response = await fetch(request);
+    let response;
+    try {
+      response = await this.#upstream.fetch(script.id, request);
+    } catch (e) {
+      console.log(`[router] error running script ${script.nameId()}:`, e);
+      ctx.response.status = 500;
+      ctx.response.body = "internal error";
+      return;
+    }
 
     ctx.response.headers = new Headers(response.headers);
     ctx.response.status = response.status;

@@ -82,6 +82,27 @@ async function handleGetScripts(context: RouterContext): Promise<void> {
   return respondSuccess(context, { scripts });
 }
 
+async function handleGetScriptContent(context: RouterContext): Promise<void> {
+  const scriptName = context.params.script_name;
+  if (!scriptName) {
+    respondErrors(context, [
+      { message: "No script name or ID given" },
+    ]);
+    return;
+  }
+
+  const script = await Store.getScript(scriptName);
+  if (!script) {
+    respondErrors(context, [
+      { message: "No script with given ID or name found" },
+    ]);
+    return;
+  }
+
+  context.response.headers.set("content-type", "application/javascript");
+  context.response.body = script.content;
+}
+
 async function handleDeleteScript(context: RouterContext): Promise<void> {
   const scriptName = context.params.script_name;
   if (!scriptName) {
@@ -137,6 +158,7 @@ export async function runServer(router: Router): Promise<void> {
     })
     .get("/v1/scripts", handleGetScripts)
     .put("/v1/scripts/:script_name", handlePutScript)
+    .get("/v1/scripts/:script_name/bundle.js", handleGetScriptContent)
     .delete("/v1/scripts/:script_name", handleDeleteScript)
     .put("/v1/secrets/:script_name", handlePutSecret);
 

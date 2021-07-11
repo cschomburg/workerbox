@@ -7,7 +7,6 @@ export class Script {
 
   status = "pending";
   updatedAt: Date;
-  url = "";
 
   constructor(name: string) {
     this.name = name;

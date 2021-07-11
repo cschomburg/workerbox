@@ -41,6 +41,17 @@ export class Store {
     }
   }
 
+  async getScript(scriptName: string): Promise<Script | null> {
+    const scripts = this.getScripts()
+      .filter((script) => scriptMatchesSelector(script, scriptName));
+
+    if (scripts.length === 0) {
+      return null;
+    }
+
+    return scripts[0];
+  }
+
   async putScript(script: Script): Promise<void> {
     this.#db.putScript(script);
     this.updateScriptStatus(script, "pending");

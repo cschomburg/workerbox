@@ -1,6 +1,6 @@
-import { Script, Secret } from "./model.ts";
-import Store from "./datastore.ts";
-import { ScriptNamePayload, ScriptPayload } from "./eventbus.ts";
+import { Script, Secret } from "../model.ts";
+import Store from "../datastore.ts";
+import { ScriptNamePayload, ScriptPayload } from "../eventbus.ts";
 
 interface ReadyMessage {
   action: "ready";
@@ -12,6 +12,7 @@ type WorkerMessage = ReadyMessage;
 class WorkerState {
   script: Script;
   worker: Worker;
+  url?: string;
 
   constructor(script: Script, worker: Worker) {
     this.script = script;
@@ -48,7 +49,7 @@ export class Runner {
   }
 
   async startScript(script: Script): Promise<void> {
-    const url = new URL("../runtime/worker.js", import.meta.url);
+    const url = new URL("../../runtime/worker.js", import.meta.url);
     const worker = new Worker(url.href, {
       type: "module",
       deno: {
@@ -122,9 +123,35 @@ export class Runner {
     const msg = e.data as WorkerMessage;
     if (msg.action === "ready") {
       console.log("[runner] worker signaled ready");
-      state.script.url = msg.address; // TODO: fixme
-
+      state.url = msg.address;
       Store.updateScriptStatus(state.script, "running");
     }
+  }
+
+  async fetch(scriptId: string, request: Request): Promise<Response> {
+    const state = this.#workers.get(scriptId);
+    if (!state) {
+      throw new Error(`worker for script ${scriptId} not found`);
+    }
+    const targetHost = state.url;
+    if (!targetHost) {
+      throw new Error(`worker for script ${scriptId} has no target`);
+    }
+
+    const url = new URL(request.url.toString());
+    const target = new URL(targetHost);
+    url.protocol = target.protocol;
+    url.hostname = target.hostname;
+    url.port = target.port;
+
+    const upstream = new Request(url.toString(), {
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+    });
+
+    const response = await fetch(upstream);
+
+    return response;
   }
 }
