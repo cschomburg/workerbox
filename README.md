@@ -18,7 +18,7 @@ deno install -qAf --unstable https://raw.githubusercontent.com/cschomburg/worker
 workerbox serve
 
 # Publish a worker
-workerbox publish worker.js
+workerbox publish hello-world ./worker.js
 ```
 
 ## Environment variables
