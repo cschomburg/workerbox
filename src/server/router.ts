@@ -1,17 +1,18 @@
-import Store from "./datastore.ts";
+import { Store } from "./datastore.ts";
 import { Context } from "../deps.ts";
 import { Script } from "./model.ts";
-import { Config } from "../config.ts";
 import { ScriptPayload } from "./eventbus.ts";
 import { FetchUpstream } from "./interfaces.ts";
 
 export class Router {
+  #store: Store;
   #domain: string;
   #routes: Map<string, Script>;
   #upstream: FetchUpstream;
 
-  constructor(config: Config, upstream: FetchUpstream) {
-    this.#domain = config.domain;
+  constructor(store: Store, upstream: FetchUpstream) {
+    this.#store = store;
+    this.#domain = this.#store.config.domain;
     this.#routes = new Map<string, Script>();
     this.#upstream = upstream;
   }
@@ -19,7 +20,7 @@ export class Router {
   async handleEvents(): Promise<void> {
     console.log("[router] running on domain", "*." + this.#domain);
 
-    for await (const event of Store.eventBus) {
+    for await (const event of this.#store.eventBus) {
       try {
         if (event.name === "scriptStatusChanged") {
           const { script } = event.value[0] as ScriptPayload;

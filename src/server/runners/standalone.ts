@@ -1,8 +1,7 @@
 import { path } from "../../deps.ts";
 import { Script, Secret } from "../model.ts";
-import Store from "../datastore.ts";
+import { Store } from "../datastore.ts";
 import { ScriptNamePayload, ScriptPayload } from "../eventbus.ts";
-import { Config } from "../../config.ts";
 
 interface ReadyMessage {
   action: "ready";
@@ -23,15 +22,15 @@ class WorkerState {
 }
 
 export class Runner {
-  #config: Config;
+  #store: Store;
   #workers = new Map<string, WorkerState>();
 
-  constructor(config: Config) {
-    this.#config = config;
+  constructor(store: Store) {
+    this.#store = store;
   }
 
   async handleEvents(): Promise<void> {
-    for await (const event of Store.eventBus) {
+    for await (const event of this.#store.eventBus) {
       try {
         if (event.name === "scriptStatusChanged") {
           const { script } = event.value[0] as ScriptPayload;
@@ -77,10 +76,13 @@ export class Runner {
 
     console.log(`[runner] started worker for ${script.nameId()}`);
 
-    const secrets = await Store.getSecrets(script.name);
+    const secrets = await this.#store.getSecrets(script.name);
     this.updateWorkerEnvironment(state, secrets);
 
-    const dbPath = path.join(this.#config.datadir, `worker-${script.name}.db`);
+    const dbPath = path.join(
+      this.#store.config.datadir,
+      `worker-${script.name}.db`,
+    );
 
     worker.postMessage({
       action: "runScript",
@@ -101,13 +103,13 @@ export class Runner {
 
     state.worker.terminate();
     this.#workers.delete(script.id);
-    Store.updateScriptStatus(script, "stopped");
+    this.#store.updateScriptStatus(script, "stopped");
 
     console.log(`[runner] stopped worker for ${script.nameId()}`);
   }
 
   async updateEnvironment(scriptName: string): Promise<void> {
-    const secrets = await Store.getSecrets(scriptName);
+    const secrets = await this.#store.getSecrets(scriptName);
 
     for (const [id, state] of this.#workers) {
       if (state.script.name === scriptName) {
@@ -134,7 +136,7 @@ export class Runner {
     if (msg.action === "ready") {
       console.log("[runner] worker signaled ready");
       state.url = msg.address;
-      Store.updateScriptStatus(state.script, "running");
+      this.#store.updateScriptStatus(state.script, "running");
     }
   }
 

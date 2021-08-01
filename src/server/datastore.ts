@@ -2,7 +2,7 @@ import { path } from "../deps.ts";
 import { Database } from "./db.ts";
 import { KeyValue, Script, Secret } from "./model.ts";
 import { EventBus } from "./eventbus.ts";
-import getConfig from "../config.ts";
+import { Config } from "../config.ts";
 
 function scriptMatchesSelector(script: Script, selector: string): boolean {
   return script.id === selector ||
@@ -11,13 +11,19 @@ function scriptMatchesSelector(script: Script, selector: string): boolean {
 }
 
 export class Store {
+  #config: Config;
   #db: Database;
   #eventBus: EventBus;
 
-  constructor() {
-    const db = path.join(getConfig().datadir, "workerbox.db");
+  constructor(config: Config) {
+    this.#config = config;
+    const db = path.join(this.#config.datadir, "workerbox.db");
     this.#db = new Database(db);
     this.#eventBus = new EventBus();
+  }
+
+  get config(): Config {
+    return this.#config;
   }
 
   get eventBus(): EventBus {
@@ -106,5 +112,3 @@ export class Store {
     return this.#db.getKeyValue(kv);
   }
 }
-
-export default new Store();

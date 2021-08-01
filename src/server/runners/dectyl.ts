@@ -1,9 +1,8 @@
 import { createWorker } from "../../deps.ts";
 import type { DeployWorker } from "../../deps.ts";
 import { Script } from "../model.ts";
-import Store from "../datastore.ts";
+import { Store } from "../datastore.ts";
 import { ScriptPayload } from "../eventbus.ts";
-import getConfig, { Config } from "../../config.ts";
 
 class WorkerState {
   script: Script;
@@ -16,15 +15,15 @@ class WorkerState {
 }
 
 export class Runner {
+  #store: Store;
   #workers = new Map<string, WorkerState>();
-  #config: Config;
 
-  constructor() {
-    this.#config = getConfig();
+  constructor(store: Store) {
+    this.#store = store;
   }
 
   async handleEvents(): Promise<void> {
-    for await (const event of Store.eventBus) {
+    for await (const event of this.#store.eventBus) {
       try {
         if (event.name === "scriptStatusChanged") {
           const { script } = event.value[0] as ScriptPayload;
@@ -44,10 +43,11 @@ export class Runner {
   }
 
   async startScript(script: Script): Promise<void> {
-    const url = `${this.#config.url}/v1/scripts/${script.nameId()}/bundle.js`;
+    const url =
+      `${this.#store.config.url}/v1/scripts/${script.nameId()}/bundle.js`;
 
     const env: Record<string, string> = {};
-    const secrets = await Store.getSecrets(script.name);
+    const secrets = await this.#store.getSecrets(script.name);
     for (const secret of secrets) {
       if (secret.value != undefined) {
         env[secret.name] = secret.value || "";
@@ -57,7 +57,7 @@ export class Runner {
     const worker = await createWorker(url, {
       env,
       name: script.nameId(),
-      host: `${script.name}.${this.#config.domain}`,
+      host: `${script.name}.${this.#store.config.domain}`,
     });
 
     const state = new WorkerState(script, worker);
@@ -65,7 +65,7 @@ export class Runner {
 
     await worker.start();
     console.log(`[runner] started worker for ${script.nameId()}`);
-    Store.updateScriptStatus(script, "running");
+    this.#store.updateScriptStatus(script, "running");
   }
 
   async stopScript(script: Script): Promise<void> {
@@ -76,7 +76,7 @@ export class Runner {
 
     await state.worker.close();
     this.#workers.delete(script.id);
-    Store.updateScriptStatus(script, "stopped");
+    this.#store.updateScriptStatus(script, "stopped");
 
     console.log(`[runner] stopped worker for ${script.nameId()}`);
   }
