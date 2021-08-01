@@ -6,7 +6,7 @@ export class Config {
   addr = env("ADDR", "0.0.0.0:8081");
   url = env("URL", "http://127.0.0.1:8081");
   domain = env("DOMAIN", "workers.local");
-  db = env("DB", "workerbox.db");
+  datadir = env("DATA_DIR", ".");
   runner = env("RUNNER", "standalone");
 }
 

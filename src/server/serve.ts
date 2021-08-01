@@ -14,13 +14,13 @@ export default async function serveCommand(
   if (cfg.runner === "dectyl") {
     runner = new DectylRunner();
   } else {
-    runner = new StandaloneRunner();
+    runner = new StandaloneRunner(cfg);
   }
   runner.handleEvents();
 
-  const router = new Router(runner);
+  const router = new Router(cfg, runner);
   router.handleEvents();
 
   await Store.startup();
-  await runServer(router);
+  await runServer(cfg, router);
 }

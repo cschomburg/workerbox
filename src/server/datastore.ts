@@ -1,3 +1,4 @@
+import { path } from "../deps.ts";
 import { Database } from "./db.ts";
 import { KeyValue, Script, Secret } from "./model.ts";
 import { EventBus } from "./eventbus.ts";
@@ -14,7 +15,8 @@ export class Store {
   #eventBus: EventBus;
 
   constructor() {
-    this.#db = new Database(getConfig().db);
+    const db = path.join(getConfig().datadir, "workerbox.db");
+    this.#db = new Database(db);
     this.#eventBus = new EventBus();
   }
 

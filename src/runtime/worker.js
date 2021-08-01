@@ -1,3 +1,5 @@
+import { StorageArea } from '../deps.ts';
+
 class FetchEvent extends Event {
   #request;
   #respondWith;
@@ -61,6 +63,10 @@ async function startListen() {
 
 async function runScript(script) {
   console.log("[worker] running script", script.name);
+
+  globalThis.StorageArea = StorageArea;
+  globalThis.DENO_STORAGE_AREA__DEFAULT_URL = `sqlite://${script.dbPath}`;
+
   const blob = new Blob([script.content]);
   const url = URL.createObjectURL(blob);
   const mod = await import(url);

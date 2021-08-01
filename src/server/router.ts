@@ -1,16 +1,17 @@
 import Store from "./datastore.ts";
 import { Context } from "../deps.ts";
 import { Script } from "./model.ts";
-import getConfig from "../config.ts";
+import { Config } from "../config.ts";
 import { ScriptPayload } from "./eventbus.ts";
 import { FetchUpstream } from "./interfaces.ts";
 
 export class Router {
-  #domain = getConfig().domain;
+  #domain: string;
   #routes: Map<string, Script>;
   #upstream: FetchUpstream;
 
-  constructor(upstream: FetchUpstream) {
+  constructor(config: Config, upstream: FetchUpstream) {
+    this.#domain = config.domain;
     this.#routes = new Map<string, Script>();
     this.#upstream = upstream;
   }

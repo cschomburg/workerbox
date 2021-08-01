@@ -13,5 +13,5 @@ RUN deno cache src/deps.ts
 ADD . .
 RUN deno cache workerbox.ts
 
-ENV WORKERBOX_DB="/data/workerbox.db"
+ENV WORKERBOX_DATA_DIR="/data"
 CMD ["run", "--unstable", "--allow-env", "--allow-net", "--allow-read=.,/data", "--allow-write=/data", "workerbox.ts", "serve"]

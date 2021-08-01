@@ -1,6 +1,8 @@
+import { path } from "../../deps.ts";
 import { Script, Secret } from "../model.ts";
 import Store from "../datastore.ts";
 import { ScriptNamePayload, ScriptPayload } from "../eventbus.ts";
+import { Config } from "../../config.ts";
 
 interface ReadyMessage {
   action: "ready";
@@ -21,7 +23,12 @@ class WorkerState {
 }
 
 export class Runner {
+  #config: Config;
   #workers = new Map<string, WorkerState>();
+
+  constructor(config: Config) {
+    this.#config = config;
+  }
 
   async handleEvents(): Promise<void> {
     for await (const event of Store.eventBus) {
@@ -73,12 +80,15 @@ export class Runner {
     const secrets = await Store.getSecrets(script.name);
     this.updateWorkerEnvironment(state, secrets);
 
+    const dbPath = path.join(this.#config.datadir, `worker-${script.name}.db`);
+
     worker.postMessage({
       action: "runScript",
       script: {
         name: script.name,
         id: script.id,
         content: script.content,
+        dbPath,
       },
     });
   }
