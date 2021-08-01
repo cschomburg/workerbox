@@ -35,7 +35,14 @@ let server;
 async function handleConn(conn) {
   const http = Deno.serveHttp(conn);
   for await (const { request, respondWith } of http) {
-    self.dispatchEvent(new FetchEvent(request, respondWith));
+    try {
+        self.dispatchEvent(new FetchEvent(request, respondWith));
+    } catch (err) {
+        console.warn(err);
+        respondWith(new Response("internal error in worker", {
+            status: 500,
+        }));
+    }
   }
 }
 
