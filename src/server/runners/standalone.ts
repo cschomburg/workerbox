@@ -68,6 +68,8 @@ export class Runner {
 
     worker.onerror = (err) => {
       console.log(`[runner] worker ${script.name} error:`, err);
+      err.preventDefault();
+      this.stopScript(script);
     };
 
     worker.addEventListener("message", (e: MessageEvent) => {
