@@ -2,3 +2,4 @@
 tsconfig.json
 workerbox.db
 test.sh
+workerbox.toml
